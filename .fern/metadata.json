@@ -1,0 +1,29 @@
+{
+  "cliVersion": "5.113.1",
+  "generatorName": "fernapi/fern-rust-sdk",
+  "generatorVersion": "0.53.9",
+  "generatorConfig": {
+    "crateName": "brevo-rust",
+    "preserveCrateNameHyphens": true,
+    "clientClassName": "BrevoClient",
+    "userAgentFromPlatformHeaders": true,
+    "extraDependencies": {
+      "reqwest": {
+        "version": "0.12",
+        "features": [
+          "rustls-tls"
+        ]
+      }
+    },
+    "packageDescription": "Official Rust SDK for the Brevo API.",
+    "packageLicense": "MIT",
+    "packageRepository": "https://github.com/getbrevo/brevo-rust",
+    "packageDocumentation": "https://developers.brevo.com",
+    "enableWireTests": false
+  },
+  "originGitCommit": "6775e382e899d1d6423e69513671cc30f9161daa",
+  "originGitCommitIsDirty": true,
+  "invokedBy": "manual",
+  "requestedVersion": "1.0.0",
+  "sdkVersion": "1.0.0"
+}
