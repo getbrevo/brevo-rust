@@ -1,6 +1,6 @@
 # Brevo Rust SDK
 
-![](https://raw.githubusercontent.com/getbrevo/brevo-node/v4/banner.png)
+![](banner.png)
 
 [![crates.io](https://img.shields.io/crates/v/brevo-rust)](https://crates.io/crates/brevo-rust)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
