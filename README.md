@@ -1,55 +1,44 @@
-# Brevo API Rust Library
+# Brevo Rust SDK
 
 ![](https://raw.githubusercontent.com/getbrevo/brevo-node/v4/banner.png)
 
-[![fern shield](https://img.shields.io/badge/%F0%9F%8C%BF-Built%20with%20Fern-brightgreen)](https://buildwithfern.com?utm_source=github&utm_medium=github&utm_campaign=readme&utm_source=https%3A%2F%2Fgithub.com%2Fgetbrevo%2Fbrevo-rust)
-[![crates.io shield](https://img.shields.io/crates/v/brevo-rust)](https://crates.io/crates/brevo-rust)
+[![crates.io](https://img.shields.io/crates/v/brevo-rust)](https://crates.io/crates/brevo-rust)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Official SDK for the Brevo API.
+Official Rust SDK for the [Brevo API](https://developers.brevo.com): send transactional email and SMS, manage contacts and campaigns, and more.
 
-## Table of Contents
+## Quick facts
 
-- [Documentation](#documentation)
-- [Installation](#installation)
-- [Reference](#reference)
-- [Usage](#usage)
-- [Environments](#environments)
-- [Errors](#errors)
-- [Request Types](#request-types)
-- [Advanced](#advanced)
-  - [Retries](#retries)
-  - [Timeouts](#timeouts)
-  - [Additional Headers](#additional-headers)
-  - [Additional Query String Parameters](#additional-query-string-parameters)
-  - [Additional Body Properties](#additional-body-properties)
-  - [Custom Client](#custom-client)
+For people and AI coding agents who want the essentials first.
 
-## Documentation
-
-API reference documentation is available [here](https://developers.brevo.com).
+| | |
+|---|---|
+| Crate name | `brevo-rust` (`cargo add brevo-rust`) |
+| Import path | `use brevo_rust::prelude::*;` |
+| Client | `BrevoClient`, built with `BrevoClient::new(ClientConfig { .. })` |
+| Authentication | API key, sent as the `api-key` header (OAuth is not supported in this SDK yet) |
+| Base URL | `https://api.brevo.com/v3` |
+| Call shape | `client.<resource>.<method>(&request, None).await` returning `Result<T, ApiError>` |
+| Runtime | async, uses `tokio` and `reqwest` with `rustls` (no system OpenSSL) |
+| Full method list | [`reference.md`](reference.md) |
+| API docs | <https://developers.brevo.com> |
 
 ## Installation
 
-Add this to your `Cargo.toml`:
+```sh
+cargo add brevo-rust
+```
+
+or add it to your `Cargo.toml`:
 
 ```toml
 [dependencies]
 brevo-rust = "1.0.0"
 ```
 
-Or install via cargo:
+## Quick start
 
-```sh
-cargo add brevo-rust
-```
-
-## Reference
-
-A full reference for this library is available [here](https://github.com/getbrevo/brevo-rust/blob/HEAD/./reference.md).
-
-## Usage
-
-Instantiate and use the client with the following:
+Send your first transactional email:
 
 ```rust
 use brevo_rust::prelude::*;
@@ -57,177 +46,143 @@ use brevo_rust::prelude::*;
 #[tokio::main]
 async fn main() {
     let config = ClientConfig {
-        api_key: Some("<value>".to_string()),
+        api_key: Some(std::env::var("BREVO_API_KEY").expect("BREVO_API_KEY not set")),
         ..Default::default()
     };
     let client = BrevoClient::new(config).expect("Failed to build client");
-    client.transactional_emails.send_transac_email(&SendTransacEmailRequest {
-        html_content: Some("<html><head></head><body><p>Hello,</p>This is my first transactional email sent from Brevo.</p></body></html>".to_string()),
-        sender: Some(SendTransacEmailRequestSender {
-            email: Some("hello@brevo.com".to_string()),
-            name: Some("Alex from Brevo".to_string()),
-            ..Default::default()
-        }),
-        subject: Some("Hello from Brevo!".to_string()),
-        to: Some(vec![SendTransacEmailRequestToItem {
-            email: "johndoe@example.com".to_string(),
-            name: Some("John Doe".to_string()),
-            ..Default::default()
-        }]),
-        ..Default::default()
-    }, None).await;
-}
-```
 
-## Environments
+    let result = client
+        .transactional_emails
+        .send_transac_email(
+            &SendTransacEmailRequest {
+                subject: Some("Hello from Brevo!".to_string()),
+                html_content: Some(
+                    "<html><body><p>Hello,</p><p>This is my first transactional email.</p></body></html>"
+                        .to_string(),
+                ),
+                sender: Some(SendTransacEmailRequestSender {
+                    name: Some("Alex from Brevo".to_string()),
+                    email: Some("hello@brevo.com".to_string()),
+                    ..Default::default()
+                }),
+                to: Some(vec![SendTransacEmailRequestToItem {
+                    email: "johndoe@example.com".to_string(),
+                    name: Some("John Doe".to_string()),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            },
+            None,
+        )
+        .await;
 
-This SDK allows you to configure different environments for API requests.
-
-```rust
-use brevo_rust::prelude::{*};
-
-let config = ClientConfig {
-    base_url: Environment::Default.url().to_string(),
-    ..Default::default()
-};
-let client = Client::new(config).expect("Failed to build client");
-```
-
-## Errors
-
-When the API returns a non-success status code (4xx or 5xx response), an error will be returned.
-
-```rust
-match client.transactional_emails.send_transac_email(None)?.await {
-    Ok(response) => {
-        println!("Success: {:?}", response);
-    },
-    Err(ApiError::HTTP { status, message }) => {
-        println!("API Error {}: {:?}", status, message);
-    },
-    Err(e) => {
-        println!("Other error: {:?}", e);
+    match result {
+        Ok(response) => println!("Sent: {:?}", response),
+        Err(e) => eprintln!("Request failed: {e}"),
     }
 }
 ```
 
-## Request Types
+## Authentication
 
-The SDK exports all request types as Rust structs. Simply import them from the crate to access them:
+The SDK authenticates with your Brevo [API key](https://developers.brevo.com/docs/api-key-authentication), which it sends in the `api-key` header. Keep the key out of source control, for example in an environment variable as above.
 
-```rust
-use brevo_rust::prelude::{*};
+You can override the key for a single call with `RequestOptions::new().api_key("...")`.
 
-let request = PostCorporateGroupRequest {
-    ...
-};
-```
+## Configuration
 
-## Advanced
+`ClientConfig` controls the client. Common fields:
 
-### Retries
+| Field | Default | Purpose |
+|---|---|---|
+| `api_key` | `None` | Your Brevo API key |
+| `base_url` | `https://api.brevo.com/v3` | API base URL |
+| `timeout` | 60 seconds | Request timeout (`std::time::Duration`) |
+| `max_retries` | 3 | Retries for failed requests |
+| `custom_headers` | SDK identification headers | Extra headers sent on every request |
+| `user_agent` | `brevo-rust/<version>` | `User-Agent` header |
+| `reqwest_client` | `None` | Your own `reqwest::Client` (proxies, TLS, and so on) |
 
-The SDK is instrumented with automatic retries with exponential backoff. A request will be retried as long
-as the request is deemed retryable and the number of retry attempts has not grown larger than the configured
-retry limit (default: 2).
-
-A request is deemed retryable when any of the following HTTP status codes is returned:
-
-- [408](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/408) (Timeout)
-- [429](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429) (Too Many Requests)
-- [5XX](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#server_error_responses) (Internal Server Error)
-
-The `retryStatusCodes` configuration controls which [5XX](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#server_error_responses) status codes are retried:
-
-- `legacy` (default): Retries `408`, `429`, and all `>= 500`
-- `recommended`: Retries `408`, `429`, `502`, `503`, `504` only (excludes `500 Internal Server Error` to avoid retrying non-idempotent failures)
-
-Use the `max_retries` method to configure this behavior.
+A builder is also available:
 
 ```rust
-let response = client.transactional_emails.send_transac_email(
-    Some(RequestOptions::new().max_retries(3))
-)?.await;
-```
+use brevo_rust::ApiClientBuilder;
+use std::time::Duration;
 
-### Timeouts
-
-The SDK defaults to a 30 second timeout. Use the `timeout` method to configure this behavior.
-
-```rust
-let response = client.transactional_emails.send_transac_email(
-    Some(RequestOptions::new().timeout_seconds(30))
-)?.await;
-```
-
-### Additional Headers
-
-You can add custom headers to requests using `RequestOptions`.
-
-```rust
-let response = client.transactional_emails.send_transac_email(
-    Some(
-        RequestOptions::new()
-            .additional_header("X-Custom-Header", "custom-value")
-            .additional_header("X-Another-Header", "another-value")
-    )
-)?
-.await;
-```
-
-### Additional Query String Parameters
-
-You can add custom query parameters to requests using `RequestOptions`.
-
-```rust
-let response = client.transactional_emails.send_transac_email(
-    Some(
-        RequestOptions::new()
-            .additional_query_param("filter", "active")
-            .additional_query_param("sort", "desc")
-    )
-)?
-.await;
-```
-
-### Additional Body Properties
-
-You can add properties to the request body using `RequestOptions`, e.g. to send fields the SDK
-doesn't model yet. Keys are sent as-is, and a property set here overrides a field of the same name.
-If the endpoint has no body, a JSON object containing only these properties is sent. Additional
-properties apply to JSON and form-urlencoded bodies; multipart (file upload) and raw bytes bodies
-are sent unchanged.
-
-```rust
-let response = client.transactional_emails.send_transac_email(
-    Some(
-        RequestOptions::new()
-            .additional_body_param("beta_feature", true)
-            .additional_body_param("metadata", serde_json::json!({ "source": "sdk" }))
-    )
-)?
-.await;
-```
-
-### Custom Client
-
-The SDK builds its own `reqwest` client by default, but you can supply your own through
-`ClientConfig.reqwest_client` (or `ApiClientBuilder::reqwest_client`) when you need control over the
-transport — custom root certificates, client certificates, proxies or connection tuning. The supplied
-client is used as-is; authentication, custom headers and retries are still applied by the SDK.
-
-```rust
-use brevo_rust::prelude::*;
-
-let certificate = reqwest::Certificate::from_pem(&std::fs::read("ca.pem")?)?;
-let reqwest_client = reqwest::Client::builder()
-    .add_root_certificate(certificate)
+let client = ApiClientBuilder::new("https://api.brevo.com/v3")
+    .api_key("your-api-key")
+    .timeout(Duration::from_secs(30))
+    .max_retries(5)
     .build()
-    .expect("Failed to build reqwest client");
-let config = ClientConfig {
-    reqwest_client: Some(reqwest_client),
-    ..Default::default()
-};
-let client = BrevoClient::new(config).expect("Failed to build client");
+    .expect("Failed to build client");
 ```
 
+## Error handling
+
+Every method returns `Result<T, ApiError>`. `ApiError` has a variant for each error the API documents, plus transport and serialization errors, so you can match on the ones you care about:
+
+```rust
+match client.account.get_account(None).await {
+    Ok(account) => println!("{:?}", account),
+    Err(ApiError::UnauthorizedError { message, .. }) => eprintln!("Check your API key: {message}"),
+    Err(ApiError::TooManyRequestsError { message, .. }) => eprintln!("Rate limited: {message}"),
+    Err(e) => eprintln!("Request failed: {e}"),
+}
+```
+
+See [`src/error.rs`](src/error.rs) for all variants.
+
+## Retries and timeouts
+
+Failed requests are retried automatically, up to 3 times by default, and requests time out after 60 seconds. Change either per call:
+
+```rust
+let response = client
+    .transactional_emails
+    .send_transac_email(
+        &request,
+        Some(RequestOptions::new().max_retries(5).timeout_seconds(30)),
+    )
+    .await;
+```
+
+## Request options
+
+`RequestOptions` also lets you add headers, query parameters or body properties to a single call:
+
+```rust
+let options = RequestOptions::new()
+    .additional_header("X-My-Header", "value")
+    .additional_query_param("debug", "true");
+```
+
+## Custom HTTP client
+
+Provide your own `reqwest::Client` to control proxies, TLS roots or connection settings. When set, it owns all transport-level configuration:
+
+```rust
+use brevo_rust::ApiClientBuilder;
+
+let http = reqwest::Client::builder().build().expect("reqwest client");
+let client = ApiClientBuilder::new("https://api.brevo.com/v3")
+    .api_key("your-api-key")
+    .reqwest_client(http)
+    .build()
+    .expect("Failed to build client");
+```
+
+## Reference
+
+Every resource and method is listed in [`reference.md`](reference.md). Resources are fields on `BrevoClient`, such as `client.contacts`, `client.email_campaigns` and `client.transactional_emails`.
+
+## Contributing
+
+This library is generated programmatically. Changes made directly to the generated code would be overwritten. Please open an issue first to discuss changes.
+
+Contributions to this README are always welcome!
+
+## Support
+
+- [API Reference](https://developers.brevo.com)
+- [GitHub Issues](https://github.com/getbrevo/brevo-rust/issues)
+- [Email Support](mailto:support@brevo.com)
